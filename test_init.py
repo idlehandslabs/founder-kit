@@ -77,6 +77,9 @@ class InitTest(unittest.TestCase):
         self.assertIsNotNone(m, "README Tests heading lost its count")
         self.assertEqual((int(m[1]), int(m[2]), int(m[3])),
                          (n_own + n_agent, n_own, n_agent))
+        # Any other "all N tests" claim must also be today's number.
+        for n in re.findall(r"all (\d+) tests", (HERE / "README.md").read_text()):
+            self.assertEqual(int(n), n_own + n_agent, f"README says 'all {n} tests'")
 
     def test_readme_schedule_matches_workflow(self):
         # kit/workflow/ here; .github/workflows/ in the standalone founder-kit repo.
@@ -85,6 +88,14 @@ class InitTest(unittest.TestCase):
         crons = re.findall(r'cron: "([^"]+)"', wf.read_text())
         self.assertEqual(crons, ["0 */6 * * *", "15 6 * * *"],
                          "workflow schedule changed; update README 'Schedule, pause, stop'")
+
+    def test_readme_explains_every_workflow_secret(self):
+        wf = next(p for p in (HERE / "workflow" / "agent.yml",
+                              HERE / ".github" / "workflows" / "agent.yml") if p.exists())
+        readme = (HERE / "README.md").read_text()
+        for name in set(re.findall(r"secrets\.([A-Z_]+)", wf.read_text())):
+            self.assertIn(f"`{name}`", readme, f"README never tells users to add {name}")
+        self.assertIn("claude setup-token", readme, "README must say how to get the OAuth token")
 
 
 if __name__ == "__main__":
