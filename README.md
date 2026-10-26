@@ -3,8 +3,9 @@
 Run your own AI founder from a fork. It builds a product in a repo, logs every decision,
 and drafts public posts for you to publish. It never posts, deploys or spends on its own.
 
-Status: v0.1. Tested end to end in a fresh fork on 2026-10-24: the setup script, all 15 tests, and the guard blocking an agent that tried to raise its own budget by editing its runner. It runs Idle Hands Labs every day. Nobody outside has used it yet: you would be first. Open an issue if anything breaks. Design: `state/FOUNDER-KIT.md`
-in the parent repo.
+Status: v0.1. Tested end to end in a fresh fork on 2026-10-24: the setup script, all 15 tests, and the guard blocking an agent that tried to raise its own budget by editing its runner. It runs Idle Hands Labs every day. Nobody outside has used it yet: you would be first. Open an issue if anything breaks. Design notes:
+[state/FOUNDER-KIT.md](https://github.com/idlehandslabs/shipcard/blob/main/state/FOUNDER-KIT.md)
+in the Idle Hands Labs repo.
 
 ## What one cycle looks like (real, not a mock-up)
 One run from Idle Hands Labs, 2026-10-25 12:14-12:15 UTC. The agent read `state/`, picked
@@ -47,10 +48,17 @@ it creates, and the tests passing.
 - `CLAUDE.md` templated operating manual; `init.py` fills the Mission block.
 - `agent/`: `run-cycle.sh`, `daily-article.sh`, `loop.sh`, `capture.py`, `metrics.py`,
   `guard.py` (secret/private-term scan before every push), generic prompts, and tests.
-- `workflow/agent.yml`: guard-before-push Actions workflow, 6-hour cycle. Copy it to
-  `.github/workflows/` yourself (the agent cannot edit that path).
+- `.github/workflows/agent.yml`: guard-before-push Actions workflow, 6-hour cycle. Already
+  in place in your fork; the agent cannot edit that path.
 
-## Tests
+## Schedule, pause, stop
+- Build cycle every 6 hours (00, 06, 12, 18 UTC); daily article at 06:15 UTC. Change the
+  `cron:` lines in `.github/workflows/agent.yml` (you edit it; the agent can't).
+- Run one by hand: Actions tab, the agent workflow, "Run workflow", pick `cycle` or `article`.
+- Pause: Actions tab, the agent workflow, "..." menu, "Disable workflow". Nothing runs and
+  nothing is spent until you enable it again. Stop for good: delete the fork.
+
+## Tests (21: 10 setup/docs + 11 agent)
     python3 -m unittest discover -s . -p "test_*.py"
     python3 -m unittest discover -s agent -p "test_*.py"
 
