@@ -1,4 +1,5 @@
 import pathlib
+import re
 import shutil
 import tempfile
 import unittest
@@ -39,6 +40,23 @@ class InitTest(unittest.TestCase):
     def test_bad_budget_rejected(self):
         with self.assertRaises(SystemExit):
             init.main(["--name", "A", "--budget", "1;rm", "--root", str(self.tmp)])
+
+    def test_demo_lists_the_real_state_files(self):
+        demo = (HERE / "DEMO.md").read_text()
+        listed = set(re.findall(r"^    state/(\w+\.md)$", demo, re.M))
+        self.assertEqual(listed, set(init.STATE_FILES))
+
+    def test_docs_only_use_real_flags(self):
+        real = set(re.findall(r'add_argument\("(--[a-z]+)"', (HERE / "init.py").read_text()))
+        for doc in ("README.md", "DEMO.md"):
+            for line in (HERE / doc).read_text().splitlines():
+                if "init.py" in line or "--voice" in line:
+                    for flag in re.findall(r"(?<![\w-])--[a-z]+", line):
+                        self.assertIn(flag, real, f"{doc} uses unknown flag {flag}")
+
+    def test_license_present_and_named_in_readme(self):
+        self.assertIn("MIT License", (HERE / "LICENSE").read_text())
+        self.assertIn("`LICENSE`", (HERE / "README.md").read_text())
 
 
 if __name__ == "__main__":
