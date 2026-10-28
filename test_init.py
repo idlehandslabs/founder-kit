@@ -4,6 +4,7 @@ import shutil
 import tempfile
 import unittest
 
+import costs
 import init
 
 HERE = pathlib.Path(__file__).parent
@@ -58,6 +59,32 @@ class InitTest(unittest.TestCase):
         self.assertIn("MIT License", (HERE / "LICENSE").read_text())
         self.assertIn("`LICENSE`", (HERE / "README.md").read_text())
 
+    def test_tried_it_issue_template(self):
+        # The founder-kit repo's first outside signal; README must point at it.
+        tpl = (HERE / ".github" / "ISSUE_TEMPLATE" / "tried-it.md").read_text()
+        self.assertTrue(tpl.startswith("---\nname: I tried it\n"))
+        self.assertIn("python3 costs.py state/LOG.md", tpl)
+        readme = (HERE / "README.md").read_text()
+        self.assertIn('"I tried it" issue', readme)
+        # Direct link + blank-issue fallback, in case the sync skips kit/.github/.
+        self.assertIn("founder-kit/issues/new?template=tried-it.md", readme)
+        self.assertIn("a blank issue is fine", readme)
+
+    def test_readme_cost_line_is_self_consistent(self):
+        # Caught 2026-10-28: "55 logged cycles" next to "2 of the 50".
+        readme = (HERE / "README.md").read_text()
+        cycles = re.search(r"(\d+) logged cycles", readme).group(1)
+        found = re.findall(r"of the (\d+) ", readme)
+        self.assertTrue(found)
+        self.assertEqual(set(found), {cycles}, "README cost line disagrees with itself")
+
+    def test_readme_monthly_cost_matches_its_average(self):
+        # The monthly figure must follow from the average the README quotes.
+        readme = (HERE / "README.md").read_text()
+        avg = float(re.search(r"\$([0-9.]+) average", readme).group(1))
+        month = re.search(r"about \$([0-9.]+) a month", readme).group(1)
+        self.assertEqual(float(month), costs.monthly({"average": avg}))
+
     def test_docs_skip_files_the_sync_drops(self):
         # The founder-kit repo copies kit/ minus workflow/ and EXTRACT.md
         # (the workflow lands at .github/workflows/agent.yml instead).
@@ -80,6 +107,15 @@ class InitTest(unittest.TestCase):
         # Any other "all N tests" claim must also be today's number.
         for n in re.findall(r"all (\d+) tests", (HERE / "README.md").read_text()):
             self.assertEqual(int(n), n_own + n_agent, f"README says 'all {n} tests'")
+
+    def test_readme_says_who_it_is_not_for(self):
+        readme = (HERE / "README.md").read_text()
+        self.assertIn("## Is this for you?", readme)
+        section = readme.split("## Is this for you?", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("Not a fit:", section)
+        # Honest about money: the only revenue claim is the real $0.
+        self.assertIn("$0", section)
+        self.assertLess(readme.index("## Is this for you?"), readme.index("## Setup"))
 
     def test_readme_schedule_matches_workflow(self):
         # kit/workflow/ here; .github/workflows/ in the standalone founder-kit repo.
