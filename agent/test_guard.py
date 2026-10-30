@@ -42,6 +42,78 @@ class GuardTest(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
         self.assertIn("AWS key", r.stdout)
 
+    def test_blocks_common_key_formats(self):
+        # formats agents often paste into code; concatenated so this file stays clean
+        for name, text in [
+            ("OpenAI key", "OPENAI = 'sk-" + "proj-abcdefghijklmnopqrstuvwx'"),
+            ("Stripe live key", "stripe = sk_" + "live_abcdefghijklmnopqrstuvwx"),
+            ("Google API key", "maps=AI" + "za" + "A" * 35),
+        ]:
+            with self.subTest(name=name):
+                self.setUp()
+                self.commit("b.txt", text + "\n")
+                r = self.guard()
+                self.assertEqual(r.returncode, 1, r.stdout)
+                self.assertIn(name, r.stdout)
+
+    def test_blocks_tokens_and_db_urls(self):
+        for name, text in [
+            ("Hugging Face token", "HF = 'hf" + "_" + "a" * 34 + "'"),
+            ("npm token", "//registry/:_authToken=npm" + "_" + "b" * 36),
+            ("Database URL with password", "DB = 'postgres" + "://app:hunter22@db.example.com/prod'"),
+        ]:
+            with self.subTest(name=name):
+                self.setUp()
+                self.commit("b.txt", text + "\n")
+                r = self.guard()
+                self.assertEqual(r.returncode, 1, r.stdout)
+                self.assertIn(name, r.stdout)
+
+    def test_allows_db_url_without_password(self):
+        self.commit("b.txt", "DB = 'postgres" + "://localhost:5432/dev'\nurl = 'https://example.com/a@b'\n")
+        self.assertEqual(self.guard().returncode, 0, self.guard().stdout)
+
+    def test_blocks_env_file_but_not_example(self):
+        self.commit("app/.env", "DEBUG=1\n")
+        r = self.guard()
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("env file", r.stdout)
+        self.setUp()
+        self.commit(".env.example", "API_KEY=\n")
+        self.assertEqual(self.guard().returncode, 0)
+
+    def test_blocks_key_files_but_not_public_key(self):
+        for name in ["deploy/id_ed25519", "id_rsa", "certs/app.p12", "signing.pfx"]:
+            self.setUp()
+            self.commit(name, "binary-ish\n")
+            r = self.guard()
+            self.assertEqual(r.returncode, 1, name)
+            self.assertIn("key file", r.stdout)
+        self.setUp()
+        self.commit("deploy/id_ed25519.pub", "ssh-ed25519 AAAA test\n")
+        self.assertEqual(self.guard().returncode, 0)
+
+    def test_clean_lookalikes_pass(self):
+        # false-positive corpus: lines that look secret-ish but are normal code and docs.
+        # A guard that blocks these would stall every cycle that touches config.
+        corpus = "\n".join([
+            "token = os.environ['GITHUB_TOKEN']",
+            "password: ''",
+            "api_key = get_secret('OPENAI_API_KEY')",
+            "Keys start with sk-ant- or sk-proj- (see docs).",
+            "from huggingface_hub import hf_hub_download",
+            "npm_config_cache=/tmp/npm",
+            "REDIS_URL=redis://localhost:6379/0",
+            "mongodb+srv://cluster0.mongodb.net/test",
+            "postgres://user@localhost/dev",
+            "Stripe test keys look like sk_test_... and are fine here.",
+            "git clone https://github.com/idlehandslabs/founder-kit",
+            "Set CLAUDE_CODE_OAUTH_TOKEN in repo secrets.",
+        ]) + "\n"
+        self.commit("docs/setup.md", corpus)
+        r = self.guard()
+        self.assertEqual(r.returncode, 0, r.stdout)
+
     def test_blocks_email(self):
         self.commit("b.txt", "mail me: someone@" + "gmail.com\n")
         self.assertEqual(self.guard().returncode, 1)
