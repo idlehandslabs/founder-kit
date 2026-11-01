@@ -3,6 +3,17 @@
 Run your own AI founder from a fork. It builds a product in a repo, logs every decision,
 and drafts public posts for you to publish. It never posts, deploys or spends on its own.
 
+## In 60 seconds
+- **What:** a GitHub Actions workflow plus a `CLAUDE.md` rulebook that run Claude Code on a
+  schedule as a "founder": each cycle it reads `state/`, ships one task with tests, logs
+  it, and drafts a post for you.
+- **Try it:** fork, add the `CLAUDE_CODE_OAUTH_TOKEN` and `PRIVATE_TERMS` secrets, run
+  `python3 init.py --name "Acme" --idea "..." --budget 100`, push, run the workflow once.
+  Details under Setup.
+- **Cost:** about $0.33 a cycle on average (our real log, numbers below), paid by your
+  Claude plan, not the kit budget.
+- **Proof it runs:** Idle Hands Labs runs on it every day. **Proof it sells:** none. $0 so far.
+
 Status: v0.1. Tested end to end in a fresh fork on 2026-10-24: the setup script, the full test suite (15 tests that day; today's count is under Tests), and the guard blocking an agent that tried to raise its own budget by editing its runner. It runs Idle Hands Labs every day. Nobody outside has used it yet: you would be first. Open an issue if anything breaks. Design notes:
 [state/FOUNDER-KIT.md](https://github.com/idlehandslabs/shipcard/blob/main/state/FOUNDER-KIT.md)
 in the Idle Hands Labs repo.
@@ -23,8 +34,8 @@ And this in `state/ATTEMPTS.md`, including the parts that went wrong:
       (node treated the dir as a file). Next: use `node --test app/tests/*.mjs`.
 
 Plus one draft post in `post-queue/` for a human to publish (or not). The zeros are real.
-Real Claude usage so far: 78 logged cycles, $24.22 total, $0.31 average, $0.11-$0.60 range
-(2 of the 78 stopped early and cost $0; `python3 costs.py state/LOG.md` on 2026-10-30).
+Real Claude usage so far: 90 logged cycles, $29.82 total, $0.33 average, $0.11-$0.60 range
+(2 of the 90 stopped early and cost $0; `python3 costs.py state/LOG.md` on 2026-11-01).
 Your Claude plan pays this, not the kit budget. Run the same command in your fork for yours.
 
 Want to see setup first? `DEMO.md` is a real one-minute transcript: `init.py`, the files
@@ -43,8 +54,8 @@ company it runs has made $0 so far; what it reliably produces is work and an hon
 - A Claude plan that includes Claude Code. Make the step-2 token on your own machine with
   `claude setup-token` (Claude Code CLI); it prints a long-lived OAuth token. Paste it into
   the secret and nowhere else. No plan? The workflow also reads an `ANTHROPIC_API_KEY`
-  secret instead; that bills per use on your API account. At our $0.31 average, the
-  default 4 cycles a day is about $37.20 a month (daily articles extra);
+  secret instead; that bills per use on your API account. At our $0.33 average, the
+  default 4 cycles a day is about $39.60 a month (daily articles extra);
   `python3 costs.py state/LOG.md` prints your own number once you have a log.
 - Python 3 for `init.py` and the tests. Nothing else to install.
 
@@ -121,7 +132,7 @@ reads them too. The first three are ones we actually hit; the fourth is a pre-fl
   your fork (usually `init.py` ran locally but wasn't pushed). Claude was not called, so
   the cycle cost $0. Push the filled `CLAUDE.md`.
 
-## Tests (43: 24 setup/docs + 19 agent)
+## Tests (44: 25 setup/docs + 19 agent)
     python3 -m unittest discover -s . -p "test_*.py"
     python3 -m unittest discover -s agent -p "test_*.py"
 
